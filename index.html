@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <link href="https://fonts.googleapis.com/css?family=Roboto:100,300,400,500,700,900" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@mdi/font@5.x/css/materialdesignicons.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.min.css" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, minimal-ui">
+</head>
+
+<body>
+  <div id="vue-app">
+    <v-app>
+      <v-main>
+        <v-container>
+          <v-card>
+            <v-toolbar dense dark flat>
+              <v-toolbar-title>GET PREDICT</v-toolbar-title>
+              <v-spacer></v-spacer>
+              <v-btn icon @click="getPredict()" color="primary">
+                <v-icon>mdi-play</v-icon>
+              </v-btn>
+              <v-btn icon @click="isConfig =! isConfig">
+                <v-icon>mdi-cog-outline</v-icon>
+              </v-btn>
+            </v-toolbar>
+            <v-card-title>
+              <v-row>
+                <v-col>
+                  <v-text-field outlined v-model="search" append-icon="mdi-magnify" label="Search" single-line hide-details></v-text-field>
+                  <v-data-table :items="output" :headers="headers" :search="search">
+                    <template v-slot:item.output="{ item }">
+                      <pre style="font-size: 11px;">{{ item.output }}</pre>
+                    </template>
+                  </v-data-table>
+                </v-col>
+              </v-row>
+            </v-card-title>
+            <v-card-text>
+            </v-card-text>
+          </v-card>
+
+          <!-- DIALOG -->
+          <v-dialog v-model="isConfig" fullscreen>
+            <v-card>
+              <v-toolbar dark dense>
+                <v-toolbar-title>KALIMAT</v-toolbar-title>
+                <v-spacer></v-spacer>
+                <v-toolbar-items>
+                  <v-btn dark @click="sentences = []">RESET</v-btn>
+                  <v-btn dark icon @click="isConfig = false">
+                    <v-icon>mdi-close</v-icon>
+                  </v-btn>
+                </v-toolbar-items>
+              </v-toolbar>
+              <v-card-text>
+                <v-container>
+                  <v-row align="center" justify="center">
+                    <v-col cols="12">
+                      <v-text-field outlined dense v-model="url" label="URL" prepend-icon="mdi-earth">
+                      </v-text-field>
+                      <v-text-field outlined dense v-model="bearer" label="Bearer"></v-text-field>
+                      <input type="file" @change="previewFiles" label="input via CSV" accept=".txt" />
+                      <v-text-field outlined dense v-model="inputSentence" label="Kalimat"
+                        @keyup.enter.native="addKalimat" append-outer-icon="mdi-play" @click:append-outer="addKalimat">
+                      </v-text-field>
+                      <v-simple-table>
+                        <template v-slot:default>
+                          <thead>
+                            <tr>
+                              <th class="text-left">No</th>
+                              <th class="text-left">Kalimat</th>
+                              <th class="text-left">Hapus</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr v-for="(k,v) in sentences" :key="v">
+                              <td>{{ v+1 }}</td>
+                              <td>{{ k }}</td>
+                              <td>
+                                <v-btn color="red" icon @click="delKalimat(v,k)">
+                                  <v-icon>mdi-delete</v-icon>
+                                  </v-icon>
+                                </v-btn>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </template>
+                      </v-simple-table>
+                    </v-col>
+                  </v-row>
+                </v-container>
+              </v-card-text>
+            </v-card>
+          </v-dialog>
+        </v-container>
+      </v-main>
+    </v-app>
+  </div>
+</body>
+
+</html>
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuetify@2.x/dist/vuetify.js"></script>
+<script type="text/javascript">
+  var app = new Vue({
+    el: '#vue-app',
+    vuetify: new Vuetify(),
+    data: () => {
+      return {
+        isConfig: false,
+        search:null,
+        url: 'http://10.23.140.3:32501/nlus/NLU-CIMB-FAQ-v12/predict',
+        bearer: '087aafb0-9863-4c04-bf26-8ae3c6106d22',
+        output: [],
+        headers: [
+          { text: 'ID', value: 'id' },
+          { text: 'Input', value: 'input' },
+          { text: 'Output', value: 'output' },
+        ],
+        inputSentence: null,
+        sentences: [],
+        files: null,
+        accept: '.csv'
+      }
+    },
+    methods: {
+      http(method, url, params, callback) {
+        var xhr = new XMLHttpRequest();
+        var output = null
+        xhr.open(method, url, true);
+        xhr.setRequestHeader('Content-Type', 'application/json; charset=utf-8');
+        xhr.setRequestHeader('Authorization', `Bearer ${this.bearer}`);
+
+        xhr.onload = function () {
+          let arr = JSON.parse(xhr.response);
+          xhr.readyState == 4 && xhr.status == 200 ? console.log('Success.') : console.log('Failed.')
+          if (typeof callback === 'function') {
+            callback(arr)
+          }
+        }
+        xhr.send(params);
+
+      },
+      delKalimat(v, k) {
+        let i = this.sentences.indexOf(k);
+        if (i > -1) { this.sentences.splice(v, 1) }
+      },
+      addKalimat() {
+        if (this.inputSentence) { this.sentences.push(this.inputSentence); }
+        this.inputSentence = null
+      },
+      previewFiles(ev) {
+        var reader = new FileReader();
+        var file = ev.target.files[0];
+        var data = null
+        if(file.type === 'text/plain'){
+          reader.onload = e => {
+            data = e.target.result
+            let split = data || [];
+            if(split.indexOf('\n')){
+              split = data.split('\n')
+              for(let i=0; i<split.length; i++){
+                this.sentences.push(split[i])
+              }
+            } 
+          }
+          reader.readAsText(file)
+        }
+      },
+      getPredict() {
+        this.output = []
+        for (let i = 0; i < this.sentences.length; i++) {
+          this.http('POST', this.url, JSON.stringify({ sentence: this.sentences[i] }),
+            (res) => {
+              this.output.push(res.result || res.result.length > 0 ? res.result[0] : [])
+            })
+        }
+      },
+    }
+  })
+</script>
